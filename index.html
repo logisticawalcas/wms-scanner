@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Escáner WMS - WALCAS</title>
+<style>
+  :root{--bg:#0d0f12;--surface:#151820;--border:#232733;--accent:#00e5ff;--danger:#ef4444;--text:#e8eaf0;--muted:#6b7280;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;}
+  h2{font-size:15px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;}
+  #reader{width:100%;max-width:400px;border-radius:12px;overflow:hidden;border:1px solid var(--accent);}
+  #hint{margin-top:16px;font-size:14px;color:var(--muted);text-align:center;}
+</style>
+</head>
+<body>
+<h2>Escáner WMS · WALCAS</h2>
+<div id="reader"></div>
+<div id="hint">Apuntá la cámara al código...</div>
+
+<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+<script>
+  const URL_WMS = "https://script.google.com/macros/s/AKfycbyMCGz-6m2g7s8XevSQdpiNzPU7qo39UBRlca_y6kHrvO1TIxDm6zuudnrpu-M_8uS5/exec";
+
+  const html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 240 },
+    (decodedText) => {
+      document.getElementById('hint').textContent = 'Código detectado, buscando...';
+      html5QrCode.stop().catch(()=>{});
+      procesarCodigo(decodedText);
+    },
+    () => {}
+  ).catch(() => {
+    document.getElementById('hint').textContent = 'No se pudo acceder a la cámara. Revisá los permisos.';
+  });
+
+  function procesarCodigo(texto){
+    if(texto.indexOf(URL_WMS) === 0){
+      window.location.href = texto;
+      return;
+    }
+    fetch(URL_WMS + '?action=buscarPorCodigo&codigo=' + encodeURIComponent(texto))
+      .then(r => r.json())
+      .then(data => {
+        if(data.ok){
+          window.location.href = URL_WMS + '?id=' + encodeURIComponent(data.id);
+        } else {
+          document.getElementById('hint').textContent = 'Código no reconocido: ' + texto;
+        }
+      })
+      .catch(() => {
+        document.getElementById('hint').textContent = 'Error de conexión al buscar el código.';
+      });
+  }
+</script>
+</body>
+</html>
