@@ -44,8 +44,8 @@
     fetch(URL_WMS + '?action=buscarPorCodigo&codigo=' + encodeURIComponent(texto))
       .then(r => r.json())
       .then(data => {
-        if(data.ok){
-          window.location.href = URL_WMS + '?id=' + encodeURIComponent(data.id);
+       if(data.ok){
+          window.location.href = URL_WMS + '?id=' + encodeURIComponent(data.id) + '&tipo=' + encodeURIComponent(data.tipo || '');
         } else {
           document.getElementById('hint').textContent = 'Código no reconocido: ' + texto;
         }
