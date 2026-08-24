@@ -14,9 +14,7 @@
 
   /* ── Paso previo: captura de N° de Factura / O.C. ── */
   #doc-step{width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px;}
-  #doc-step.oculto{display:none;}
-  #reader-wrap.oculto{display:none;}
-  #reader-wrap{width:100%;max-width:400px;}
+  .oculto{display:none;}
   .doc-label{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
   #doc-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-size:16px;font-weight:700;letter-spacing:.03em;outline:none;text-transform:uppercase;-webkit-appearance:none;appearance:none;font-family:inherit;}
   #doc-input:focus{border-color:var(--accent);}
@@ -37,10 +35,8 @@
   <div id="doc-nota">Ingresá el número mirando el documento antes de empezar a escanear.</div>
 </div>
 
-<div id="reader-wrap" class="oculto">
-  <div id="reader"></div>
-  <div id="hint">Apuntá la cámara al código...</div>
-</div>
+<div id="reader" class="oculto"></div>
+<div id="hint" class="oculto">Apuntá la cámara al código...</div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
@@ -72,7 +68,8 @@
 
   function iniciarCamara(){
     document.getElementById('doc-step').classList.add('oculto');
-    document.getElementById('reader-wrap').classList.remove('oculto');
+    document.getElementById('reader').classList.remove('oculto');
+    document.getElementById('hint').classList.remove('oculto');
     html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
