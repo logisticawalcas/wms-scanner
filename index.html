@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Escáner WMS - WALCAS</title>
 <style>
-  :root{--bg:#0d0f12;--surface:#151820;--border:#232733;--accent:#00e5ff;--ok:#22c55e;--danger:#ef4444;--text:#e8eaf0;--muted:#6b7280;}
+  :root{--bg:#0d0f12;--surface:#151820;--border:#232733;--accent:#00e5ff;--danger:#ef4444;--text:#e8eaf0;--muted:#6b7280;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;}
   h2{font-size:15px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;text-align:center;}
@@ -16,10 +16,11 @@
   #doc-step{width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px;}
   #doc-step.oculto{display:none;}
   #reader-wrap.oculto{display:none;}
+  #reader-wrap{width:100%;max-width:400px;}
   .doc-label{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
-  #doc-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-size:16px;font-weight:700;letter-spacing:.03em;outline:none;text-transform:uppercase;}
+  #doc-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-size:16px;font-weight:700;letter-spacing:.03em;outline:none;text-transform:uppercase;-webkit-appearance:none;appearance:none;font-family:inherit;}
   #doc-input:focus{border-color:var(--accent);}
-  #doc-continuar{width:100%;background:rgba(0,229,255,.12);border:1px solid var(--accent);border-radius:10px;padding:15px;color:var(--accent);font-size:15px;font-weight:700;letter-spacing:.05em;cursor:pointer;min-height:52px;}
+  #doc-continuar{width:100%;background:rgba(0,229,255,.12);border:1px solid var(--accent);border-radius:10px;padding:15px;color:var(--accent);font-size:15px;font-weight:700;letter-spacing:.05em;cursor:pointer;min-height:52px;-webkit-appearance:none;appearance:none;font-family:inherit;}
   #doc-continuar:active{opacity:.7;}
   #doc-error{color:var(--danger);font-size:13px;text-align:center;min-height:16px;}
   #doc-nota{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;}
