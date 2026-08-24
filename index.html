@@ -44,6 +44,14 @@
   let documentoActual = "";
   let html5QrCode = null;
 
+  // Si el navegador reactiva esta pestaña desde su caché (en vez de abrir
+  // una nueva de verdad, algo común en Android al tocar un acceso directo ya
+  // abierto), forzamos una recarga completa para que la factura anterior
+  // no quede pegada en memoria.
+  window.addEventListener('pageshow', function(event){
+    if (event.persisted) { window.location.reload(); }
+  });
+
   // Si venimos de un producto anterior dentro del MISMO pedido, el número de
   // documento ya viene en la URL (?documento=...) y no se vuelve a pedir:
   // se salta directo a la cámara para escanear el siguiente producto.
