@@ -111,6 +111,7 @@
   <div id="check-error" style="display:none;color:var(--danger);font-size:13px;text-align:center;padding:8px;"></div>
   <div id="lista-checklist"></div>
   <button class="btn-principal" onclick="irACamara()">📷 Escanear Producto de Este Pedido</button>
+  <button class="btn-secundario" onclick="irAlCarrito()" style="border-color:var(--ok);color:var(--ok);">🛒 Ir al Carrito del WMS</button>
   <a id="btn-ver-pdf" class="btn-secundario" style="display:block;text-align:center;text-decoration:none;" target="_blank">📄 Ver PDF Completo</a>
   <div class="link-manual" onclick="cancelarYVolver()">← Cancelar y volver a la lista</div>
 </div>
@@ -348,6 +349,12 @@
     renderChecklist(numeroDocumento);
   }
 
+  function irAlCarrito(){
+    // Deriva la URL base del WMS quitando "/exec" para armar la de la
+    // página de carrito ("?page=carrito").
+    window.location.href = URL_WMS + '?page=carrito';
+  }
+
   function cancelarYVolver(){
     if (pedidoActivo && pedidoActivo.mes) {
       fetch(URL_WMS + '?action=liberarReservaPedido&mes=' + encodeURIComponent(pedidoActivo.mes) + '&fila=' + pedidoActivo.fila).catch(()=>{});
@@ -404,14 +411,25 @@
   }
 
   // Si volvemos de un producto del WMS con ?documento= en la URL,
-  // saltamos directo a la cámara para seguir escaneando el mismo pedido
-  // (mismo comportamiento de siempre, no cambia).
+  // mostramos el checklist (para marcar lo que se acaba de agregar)
+  // en vez de saltar directo a la cámara — así se ve el progreso
+  // antes de decidir escanear el siguiente producto.
   (function(){
     const params = new URLSearchParams(window.location.search);
     const docParam = params.get('documento');
     if(docParam){
-      pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
-      irACamara();
+      const u = localStorage.getItem('scanner_usuario');
+      const e = parseInt(localStorage.getItem('scanner_expira') || '0');
+      if (u && Date.now() < e) {
+        usuarioActual = u;
+        pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
+        abrirChecklist(docParam);
+      } else {
+        // Si por algún motivo la sesión de PIN venció, igual dejamos
+        // seguir directo a la cámara (mismo comportamiento de siempre).
+        pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
+        irACamara();
+      }
     }
   })();
 </script>
