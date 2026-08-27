@@ -5,79 +5,363 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Escáner WMS - WALCAS</title>
 <style>
-  :root{--bg:#0d0f12;--surface:#151820;--border:#232733;--accent:#00e5ff;--danger:#ef4444;--text:#e8eaf0;--muted:#6b7280;}
-  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--bg:#0d0f12;--surface:#151820;--border:#232733;--accent:#00e5ff;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--text:#e8eaf0;--muted:#6b7280;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   body{background:var(--bg);color:var(--text);font-family:sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;}
   h2{font-size:15px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;text-align:center;}
+  .oculto{display:none !important;}
+  .pantalla{width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px;}
+
+  /* ── PIN de inicio (reutiliza verificarPin, que ya existe en el WMS) ── */
+  .pin-display{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;font-size:32px;letter-spacing:.5em;color:var(--text);min-height:70px;}
+  .pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .pin-btn{background:var(--surface);border:1px solid var(--border);border-radius:12px;height:64px;font-size:22px;font-weight:700;color:var(--text);cursor:pointer;}
+  .pin-btn:active{background:#1a1e2a;}
+  .pin-btn.del{font-size:15px;color:var(--danger);}
+  .pin-btn.ok-btn{background:rgba(0,229,255,.1);border-color:var(--accent);color:var(--accent);font-size:14px;}
+  .pin-error{color:var(--danger);font-size:13px;text-align:center;min-height:16px;}
+
+  /* ── Lista de pedidos ── */
+  .topbar{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .usuario-actual{font-size:12px;color:var(--muted);}
+  .usuario-actual a{color:var(--accent);text-decoration:underline;cursor:pointer;}
+  .item-pedido{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;}
+  .item-pedido:active{background:#1a1e2a;}
+  .item-pedido.tomado{opacity:.55;}
+  .fila-top{display:flex;justify-content:space-between;align-items:center;}
+  .factura-num{font-size:15px;font-weight:700;color:var(--accent);}
+  .cliente-nom{font-size:12px;color:var(--muted);margin-top:2px;}
+  .badge{font-size:9.5px;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+  .badge-ok{color:var(--ok);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);}
+  .badge-tomado{color:var(--warn);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);}
+  .vacio{text-align:center;color:var(--muted);font-size:13px;padding:30px 10px;}
+  .link-manual{text-align:center;font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer;padding-top:8px;}
+
+  /* ── Paso previo manual (respaldo) ── */
+  .doc-label{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  #doc-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-size:16px;font-weight:700;letter-spacing:.03em;outline:none;text-transform:uppercase;font-family:inherit;}
+  #doc-input:focus{border-color:var(--accent);}
+  .btn-principal{width:100%;background:rgba(0,229,255,.12);border:1px solid var(--accent);border-radius:10px;padding:15px;color:var(--accent);font-size:15px;font-weight:700;letter-spacing:.05em;cursor:pointer;min-height:52px;font-family:inherit;}
+  .btn-principal:active{opacity:.7;}
+  .btn-principal:disabled{opacity:.4;}
+  #doc-error{color:var(--danger);font-size:13px;text-align:center;min-height:16px;}
+
+  /* ── Checklist ── */
+  .factura-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+  .linea-check{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
+  .linea-check.completa{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25);}
+  .linea-check.dudosa{background:rgba(239,68,68,.07);border-color:var(--danger);}
+  .linea-icono{font-size:16px;flex-shrink:0;}
+  .linea-info{flex:1;min-width:0;}
+  .linea-sku{font-size:13px;color:var(--text);}
+  .linea-nombre{font-size:10.5px;color:var(--muted);margin-top:1px;}
+  .linea-cant{font-size:14px;font-weight:700;color:var(--ok);flex-shrink:0;}
+  .checkbox-manual{width:20px;height:20px;flex-shrink:0;}
+  .btn-secundario{width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;}
+  .cargando{text-align:center;color:var(--muted);font-size:13px;padding:20px;}
+
   #reader{width:100%;max-width:400px;border-radius:12px;overflow:hidden;border:1px solid var(--accent);}
   #hint{margin-top:16px;font-size:14px;color:var(--muted);text-align:center;}
-
-  /* ── Paso previo: captura de N° de Factura / O.C. ── */
-  #doc-step{width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px;}
-  .oculto{display:none;}
-  .doc-label{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
-  #doc-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-size:16px;font-weight:700;letter-spacing:.03em;outline:none;text-transform:uppercase;-webkit-appearance:none;appearance:none;font-family:inherit;}
-  #doc-input:focus{border-color:var(--accent);}
-  #doc-continuar{width:100%;background:rgba(0,229,255,.12);border:1px solid var(--accent);border-radius:10px;padding:15px;color:var(--accent);font-size:15px;font-weight:700;letter-spacing:.05em;cursor:pointer;min-height:52px;-webkit-appearance:none;appearance:none;font-family:inherit;}
-  #doc-continuar:active{opacity:.7;}
-  #doc-error{color:var(--danger);font-size:13px;text-align:center;min-height:16px;}
-  #doc-nota{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;}
 </style>
 </head>
 <body>
 <h2>Escáner WMS · WALCAS</h2>
 
-<div id="doc-step">
+<!-- ═══════ PANTALLA 1: Ingresar PIN (mismo mecanismo que ya usa el WMS) ═══════ -->
+<div id="pantalla-usuario" class="pantalla">
+  <div class="doc-label">Ingresá tu PIN</div>
+  <div class="pin-display" id="pin-display">────</div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinDigito('1')">1</button><button class="pin-btn" onclick="pinDigito('2')">2</button><button class="pin-btn" onclick="pinDigito('3')">3</button>
+    <button class="pin-btn" onclick="pinDigito('4')">4</button><button class="pin-btn" onclick="pinDigito('5')">5</button><button class="pin-btn" onclick="pinDigito('6')">6</button>
+    <button class="pin-btn" onclick="pinDigito('7')">7</button><button class="pin-btn" onclick="pinDigito('8')">8</button><button class="pin-btn" onclick="pinDigito('9')">9</button>
+    <button class="pin-btn del" onclick="pinBorrar()">⌫</button><button class="pin-btn" onclick="pinDigito('0')">0</button><button class="pin-btn ok-btn" onclick="pinConfirmar()">ENTRAR</button>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+</div>
+
+<!-- ═══════ PANTALLA 2: Lista de pedidos pendientes ═══════ -->
+<div id="pantalla-lista" class="pantalla oculto">
+  <div class="topbar">
+    <span class="usuario-actual" id="texto-usuario"></span>
+    <a class="usuario-actual" onclick="cambiarUsuario()">Cambiar</a>
+  </div>
+  <div id="lista-pedidos"><div class="cargando">Cargando pedidos...</div></div>
+  <div class="link-manual" onclick="mostrarPasoManual()">Buscar por número manualmente</div>
+</div>
+
+<!-- ═══════ PANTALLA 3: Paso manual (respaldo) ═══════ -->
+<div id="pantalla-manual" class="pantalla oculto">
   <div class="doc-label">N° de Factura / O.C.</div>
-  <input id="doc-input" type="text" placeholder="Ej: FAC-00231 o OC-4587" autocomplete="off" autofocus/>
+  <input id="doc-input" type="text" placeholder="Ej: F13300 o T2850" autocomplete="off"/>
   <div id="doc-error"></div>
-  <button id="doc-continuar" onclick="continuarConFactura()">▶ Continuar y Escanear</button>
-  <div id="doc-nota">Ingresá el número mirando el documento antes de empezar a escanear.</div>
+  <button class="btn-principal" onclick="continuarConFacturaManual()">▶ Continuar y Escanear</button>
+  <div class="link-manual" onclick="volverALista()">← Volver a la lista de pedidos</div>
+</div>
+
+<!-- ═══════ PANTALLA 4: Checklist del pedido ═══════ -->
+<div id="pantalla-checklist" class="pantalla oculto">
+  <div class="factura-card">
+    <div class="fila-top">
+      <span class="factura-num" id="check-factura"></span>
+      <span class="badge badge-tomado" id="check-badge-usuario"></span>
+    </div>
+    <div class="cliente-nom" id="check-cliente"></div>
+  </div>
+  <div id="check-error" style="display:none;color:var(--danger);font-size:13px;text-align:center;padding:8px;"></div>
+  <div id="lista-checklist"></div>
+  <button class="btn-principal" onclick="irACamara()">📷 Escanear Producto de Este Pedido</button>
+  <a id="btn-ver-pdf" class="btn-secundario" style="display:block;text-align:center;text-decoration:none;" target="_blank">📄 Ver PDF Completo</a>
+  <div class="link-manual" onclick="cancelarYVolver()">← Cancelar y volver a la lista</div>
 </div>
 
 <div id="reader" class="oculto"></div>
-<div id="hint" class="oculto">Apuntá la cámara al código...</div>
+<div id="hint" class="oculto"></div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
   const URL_WMS = "https://script.google.com/macros/s/AKfycbyMCGz-6m2g7s8XevSQdpiNzPU7qo39UBRlca_y6kHrvO1TIxDm6zuudnrpu-M_8uS5/exec";
-  let documentoActual = "";
-  let html5QrCode = null;
 
-  // Si el navegador reactiva esta pestaña desde su caché (en vez de abrir
-  // una nueva de verdad, algo común en Android al tocar un acceso directo ya
-  // abierto), forzamos una recarga completa para que la factura anterior
-  // no quede pegada en memoria.
+  const SESSION_HORAS = 8; // misma duración de sesión que ya usa el resto del WMS
+
+  let usuarioActual = "";
+  let pedidoActivo = null; // { mes, fila, factura, cliente }
+  let checklistActual = [];
+  let html5QrCode = null;
+  let pinActual = "";
+
   window.addEventListener('pageshow', function(event){
     if (event.persisted) { window.location.reload(); }
   });
 
-  // Si venimos de un producto anterior dentro del MISMO pedido, el número de
-  // documento ya viene en la URL (?documento=...) y no se vuelve a pedir:
-  // se salta directo a la cámara para escanear el siguiente producto.
-  (function(){
-    const params  = new URLSearchParams(window.location.search);
-    const docParam = params.get('documento');
-    if(docParam){
-      documentoActual = docParam;
-      iniciarCamara();
+  function mostrarSolo(idPantalla){
+    ['pantalla-usuario','pantalla-lista','pantalla-manual','pantalla-checklist'].forEach(function(id){
+      document.getElementById(id).classList.toggle('oculto', id !== idPantalla);
+    });
+  }
+
+  // ── Arranque: reutiliza la sesión guardada si sigue vigente ──
+  (function iniciar(){
+    const u = localStorage.getItem('scanner_usuario');
+    const e = parseInt(localStorage.getItem('scanner_expira') || '0');
+    if (u && Date.now() < e) {
+      usuarioActual = u;
+      document.getElementById('texto-usuario').textContent = usuarioActual;
+      cargarListaPedidos();
+    } else {
+      mostrarSolo('pantalla-usuario');
     }
   })();
 
-  function continuarConFactura(){
-    const valor = document.getElementById('doc-input').value.trim().toUpperCase();
-    if(!valor){
-      document.getElementById('doc-error').textContent = 'Ingresá el número de factura u orden antes de continuar.';
-      return;
-    }
-    documentoActual = valor;
-    iniciarCamara();
+  function pinDigito(d){
+    if (pinActual.length >= 6) return;
+    pinActual += d;
+    document.getElementById('pin-display').textContent = pinActual.replace(/./g, '●').padEnd(4, '─');
+  }
+  function pinBorrar(){
+    pinActual = pinActual.slice(0, -1);
+    document.getElementById('pin-display').textContent = pinActual.replace(/./g, '●').padEnd(4, '─') || '────';
+  }
+  function pinConfirmar(){
+    if (!pinActual) return;
+    document.getElementById('pin-error').textContent = 'Verificando...';
+    // Reutiliza verificarPin, que YA EXISTE en el WMS — sin cambios de backend para esto.
+    fetch(URL_WMS + '?action=verificarPin&pin=' + encodeURIComponent(pinActual))
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          usuarioActual = data.nombre;
+          const expira = Date.now() + SESSION_HORAS * 3600 * 1000;
+          localStorage.setItem('scanner_usuario', data.nombre);
+          localStorage.setItem('scanner_expira', expira);
+          document.getElementById('texto-usuario').textContent = usuarioActual;
+          pinActual = '';
+          cargarListaPedidos();
+        } else {
+          document.getElementById('pin-error').textContent = 'PIN incorrecto, intentá de nuevo';
+          pinActual = '';
+          document.getElementById('pin-display').textContent = '────';
+        }
+      })
+      .catch(() => {
+        document.getElementById('pin-error').textContent = 'Error de conexión';
+      });
   }
 
-  function iniciarCamara(){
-    document.getElementById('doc-step').classList.add('oculto');
+  function cambiarUsuario(){
+    localStorage.removeItem('scanner_usuario');
+    localStorage.removeItem('scanner_expira');
+    usuarioActual = "";
+    pinActual = "";
+    document.getElementById('pin-display').textContent = '────';
+    document.getElementById('pin-error').textContent = '';
+    mostrarSolo('pantalla-usuario');
+  }
+
+  // ── Lista de pedidos pendientes ──
+  function cargarListaPedidos(){
+    mostrarSolo('pantalla-lista');
+    document.getElementById('lista-pedidos').innerHTML = '<div class="cargando">Cargando pedidos...</div>';
+    fetch(URL_WMS + '?action=listaPedidosPendientes')
+      .then(r => r.json())
+      .then(lista => {
+        const cont = document.getElementById('lista-pedidos');
+        if (!lista || !lista.length) {
+          cont.innerHTML = '<div class="vacio">🎉 No hay pedidos pendientes de alistar.</div>';
+          return;
+        }
+        cont.innerHTML = '';
+        lista.forEach(p => {
+          const tomado = p.reservadoPor && p.reservadoPor !== usuarioActual;
+          const div = document.createElement('div');
+          div.className = 'item-pedido' + (tomado ? ' tomado' : '');
+          div.innerHTML =
+            '<div class="fila-top">' +
+              '<span class="factura-num">' + p.factura + '</span>' +
+              (tomado
+                ? '<span class="badge badge-tomado">Alistando: ' + p.reservadoPor + '</span>'
+                : '<span class="badge badge-ok">Disponible</span>') +
+            '</div>' +
+            '<div class="cliente-nom">' + (p.cliente || '') + '</div>';
+          if (!tomado) {
+            div.onclick = function(){ seleccionarPedido(p); };
+          }
+          cont.appendChild(div);
+        });
+      })
+      .catch(() => {
+        document.getElementById('lista-pedidos').innerHTML = '<div class="vacio">Error de conexión al buscar pedidos.</div>';
+      });
+  }
+
+  function seleccionarPedido(p){
+    document.getElementById('lista-pedidos').innerHTML = '<div class="cargando">Reservando pedido...</div>';
+    const url = URL_WMS + '?action=reservarPedido'
+      + '&mes=' + encodeURIComponent(p.mes)
+      + '&fila=' + p.fila
+      + '&usuario=' + encodeURIComponent(usuarioActual);
+    fetch(url)
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ok) {
+          alert(res.error || 'No se pudo reservar este pedido.');
+          cargarListaPedidos();
+          return;
+        }
+        pedidoActivo = { mes: p.mes, fila: p.fila, factura: p.factura, cliente: p.cliente };
+        abrirChecklist(p.factura);
+      })
+      .catch(() => {
+        alert('Error de conexión al reservar el pedido.');
+        cargarListaPedidos();
+      });
+  }
+
+  // ── Paso manual (respaldo) ──
+  function mostrarPasoManual(){
+    mostrarSolo('pantalla-manual');
+    document.getElementById('doc-input').value = '';
+    document.getElementById('doc-error').textContent = '';
+  }
+  function volverALista(){ cargarListaPedidos(); }
+
+  function continuarConFacturaManual(){
+    const valor = document.getElementById('doc-input').value.trim().toUpperCase();
+    if(!valor){
+      document.getElementById('doc-error').textContent = 'Ingresá el número de factura antes de continuar.';
+      return;
+    }
+    pedidoActivo = { mes: null, fila: null, factura: valor, cliente: '' };
+    abrirChecklist(valor);
+  }
+
+  // ── Checklist ──
+  function abrirChecklist(numeroDocumento){
+    mostrarSolo('pantalla-checklist');
+    document.getElementById('check-factura').textContent = pedidoActivo.factura;
+    document.getElementById('check-cliente').textContent = pedidoActivo.cliente || '';
+    document.getElementById('check-badge-usuario').textContent = usuarioActual;
+    document.getElementById('check-error').style.display = 'none';
+    document.getElementById('lista-checklist').innerHTML = '<div class="cargando">Leyendo el PDF del pedido...</div>';
+    document.getElementById('btn-ver-pdf').style.display = 'none';
+
+    fetch(URL_WMS + '?action=checklistPedido&documento=' + encodeURIComponent(numeroDocumento))
+      .then(r => r.json())
+      .then(res => {
+        if (res.urlPdf) {
+          const btnPdf = document.getElementById('btn-ver-pdf');
+          btnPdf.href = res.urlPdf;
+          btnPdf.style.display = 'block';
+        }
+        if (!res.ok) {
+          document.getElementById('lista-checklist').innerHTML = '';
+          const err = document.getElementById('check-error');
+          err.style.display = 'block';
+          err.textContent = '⚠ ' + res.error + ' — Podés alistar mirando el PDF completo y marcar el pedido como Alistado desde el Panel cuando termines.';
+          return;
+        }
+        // Restaura marcas guardadas localmente (si ya se venía trabajando este pedido)
+        const claveLocal = 'checklist_' + numeroDocumento;
+        const marcadas = JSON.parse(localStorage.getItem(claveLocal) || '{}');
+        checklistActual = res.lineas.map(function(l, idx){
+          return Object.assign({}, l, { idx: idx, marcada: !!marcadas[idx] });
+        });
+        renderChecklist(numeroDocumento);
+      })
+      .catch(() => {
+        document.getElementById('lista-checklist').innerHTML = '<div class="vacio">Error de conexión leyendo el pedido.</div>';
+      });
+  }
+
+  function renderChecklist(numeroDocumento){
+    const cont = document.getElementById('lista-checklist');
+    cont.innerHTML = '';
+    checklistActual.forEach(function(l){
+      const div = document.createElement('div');
+      const dudosa = !l.confiable;
+      div.className = 'linea-check' + (l.marcada ? ' completa' : '') + (dudosa ? ' dudosa' : '');
+      div.style.marginBottom = '6px';
+      div.innerHTML =
+        '<span class="linea-icono">' + (dudosa ? '⚠️' : (l.marcada ? '✅' : '⬜')) + '</span>' +
+        '<div class="linea-info">' +
+          '<div class="linea-sku">' + l.sku + (l.unidad ? ' · ' + l.unidad : '') + '</div>' +
+          '<div class="linea-nombre">' + l.nombre + (dudosa ? ' · Verificá el PDF, cantidad no confirmada' : '') + '</div>' +
+        '</div>' +
+        (dudosa
+          ? ''
+          : '<span class="linea-cant">' + (l.cantidadEsperada !== null ? l.cantidadEsperada : '?') + '</span>' +
+            '<input type="checkbox" class="checkbox-manual" ' + (l.marcada ? 'checked' : '') + '/>');
+      if (!dudosa) {
+        const chk = div.querySelector('input');
+        chk.onchange = function(){ toggleLinea(numeroDocumento, l.idx, chk.checked); };
+      }
+      cont.appendChild(div);
+    });
+  }
+
+  function toggleLinea(numeroDocumento, idx, marcada){
+    checklistActual[idx].marcada = marcada;
+    const claveLocal = 'checklist_' + numeroDocumento;
+    const guardado = {};
+    checklistActual.forEach(function(l){ if (l.marcada) guardado[l.idx] = true; });
+    localStorage.setItem(claveLocal, JSON.stringify(guardado));
+    renderChecklist(numeroDocumento);
+  }
+
+  function cancelarYVolver(){
+    if (pedidoActivo && pedidoActivo.mes) {
+      fetch(URL_WMS + '?action=liberarReservaPedido&mes=' + encodeURIComponent(pedidoActivo.mes) + '&fila=' + pedidoActivo.fila).catch(()=>{});
+    }
+    pedidoActivo = null;
+    cargarListaPedidos();
+  }
+
+  // ── Ir a la cámara (mismo mecanismo de escaneo de siempre) ──
+  function irACamara(){
+    document.getElementById('pantalla-checklist').classList.add('oculto');
     document.getElementById('reader').classList.remove('oculto');
     document.getElementById('hint').classList.remove('oculto');
+    document.getElementById('hint').textContent = 'Apuntá la cámara al código...';
     html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
@@ -93,12 +377,10 @@
     });
   }
 
-  // Anexa el número de documento (si existe) a la URL de destino, respetando
-  // si esa URL ya trae otros parámetros (?) o todavía no tiene ninguno.
   function conDocumento(url){
-    if(!documentoActual) return url;
+    if(!pedidoActivo || !pedidoActivo.factura) return url;
     const separador = url.indexOf('?') === -1 ? '?' : '&';
-    return url + separador + 'documento=' + encodeURIComponent(documentoActual);
+    return url + separador + 'documento=' + encodeURIComponent(pedidoActivo.factura);
   }
 
   function procesarCodigo(texto){
@@ -120,6 +402,18 @@
         document.getElementById('hint').textContent = 'Error de conexión al buscar el código.';
       });
   }
+
+  // Si volvemos de un producto del WMS con ?documento= en la URL,
+  // saltamos directo a la cámara para seguir escaneando el mismo pedido
+  // (mismo comportamiento de siempre, no cambia).
+  (function(){
+    const params = new URLSearchParams(window.location.search);
+    const docParam = params.get('documento');
+    if(docParam){
+      pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
+      irACamara();
+    }
+  })();
 </script>
 </body>
 </html>
