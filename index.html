@@ -175,6 +175,7 @@
           const expira = Date.now() + SESSION_HORAS * 3600 * 1000;
           localStorage.setItem('scanner_usuario', data.nombre);
           localStorage.setItem('scanner_expira', expira);
+          localStorage.setItem('scanner_pin', pinActual); // ← para no pedirlo de nuevo en el WMS
           document.getElementById('texto-usuario').textContent = usuarioActual;
           pinActual = '';
           cargarListaPedidos();
@@ -385,9 +386,15 @@
   }
 
   function conDocumento(url){
-    if(!pedidoActivo || !pedidoActivo.factura) return url;
-    const separador = url.indexOf('?') === -1 ? '?' : '&';
-    return url + separador + 'documento=' + encodeURIComponent(pedidoActivo.factura);
+    if(pedidoActivo && pedidoActivo.factura){
+      const separador = url.indexOf('?') === -1 ? '?' : '&';
+      url += separador + 'documento=' + encodeURIComponent(pedidoActivo.factura);
+    }
+    const pinGuardado = localStorage.getItem('scanner_pin');
+    if(pinGuardado){
+      url += (url.indexOf('?') === -1 ? '?' : '&') + 'pin=' + encodeURIComponent(pinGuardado);
+    }
+    return url;
   }
 
   function procesarCodigo(texto){
