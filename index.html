@@ -112,7 +112,6 @@
   <div id="check-error" style="display:none;color:var(--danger);font-size:13px;text-align:center;padding:8px;"></div>
   <div id="lista-checklist"></div>
   <button class="btn-principal" onclick="irACamara()">📷 Escanear Producto de Este Pedido</button>
-  <button class="btn-secundario" onclick="irAlCarrito()" style="border-color:var(--ok);color:var(--ok);">🛒 Ir al Carrito del WMS</button>
   <a id="btn-ver-pdf" class="btn-secundario" style="display:block;text-align:center;text-decoration:none;" target="_blank">📄 Ver PDF Completo</a>
   <button id="btn-marcar-alisto" class="btn-principal" onclick="marcarAlisto()" style="display:none;background:rgba(34,197,94,.12);border-color:var(--ok);color:var(--ok);margin-top:8px;">✅ Marcar Pedido como Alistado</button>
   <div class="link-manual" onclick="cancelarYVolver()">← Cancelar y volver a la lista</div>
@@ -360,25 +359,54 @@
     cont.innerHTML = '';
     checklistActual.forEach(function(l){
       const div = document.createElement('div');
-      const dudosa = !l.confiable;
+      const dudosa = !l.confiable && !l.corregidaManual;
+      const yaCorregida = !l.confiable && l.corregidaManual;
       div.className = 'linea-check' + (l.marcada ? ' completa' : '') + (dudosa ? ' dudosa' : '');
       div.style.marginBottom = '6px';
       div.innerHTML =
+        '<div style="width:100%;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
         '<span class="linea-icono">' + (dudosa ? '⚠️' : (l.marcada ? '✅' : '⬜')) + '</span>' +
         '<div class="linea-info">' +
-          '<div class="linea-sku">' + l.sku + (l.unidad ? ' · ' + l.unidad : '') + '</div>' +
+          '<div class="linea-sku">' + l.sku + (l.unidad ? ' · ' + l.unidad : (yaCorregida ? ' · ' + l.unidad : '')) + '</div>' +
           '<div class="linea-nombre">' + l.nombre + (dudosa ? ' · Verificá el PDF, cantidad no confirmada' : '') + '</div>' +
         '</div>' +
         (dudosa
           ? ''
           : '<span class="linea-cant">' + (l.cantidadEsperada !== null ? l.cantidadEsperada : '?') + '</span>' +
-            '<input type="checkbox" class="checkbox-manual" ' + (l.marcada ? 'checked' : '') + '/>');
-      if (!dudosa) {
-        const chk = div.querySelector('input');
+            '<input type="checkbox" class="checkbox-manual" ' + (l.marcada ? 'checked' : '') + '/>') +
+        '</div>' +
+        (dudosa
+          ? '<div style="display:flex;gap:6px;margin-top:8px;">' +
+              '<input type="number" placeholder="Cant." id="cant-manual-' + l.idx + '" style="width:70px;background:var(--bg);border:1px solid var(--danger);border-radius:7px;padding:7px 9px;color:var(--text);font-size:13px;"/>' +
+              '<select id="unidad-manual-' + l.idx + '" style="flex:1;background:var(--bg);border:1px solid var(--danger);border-radius:7px;padding:7px 9px;color:var(--text);font-size:13px;">' +
+                '<option value="Caja">Caja</option><option value="Paq">Paquete</option><option value="Unid">Unidad</option>' +
+              '</select>' +
+              '<button onclick="confirmarCorreccionManual(\'' + numeroDocumento + '\',' + l.idx + ')" style="background:rgba(239,68,68,.15);border:1px solid var(--danger);border-radius:7px;padding:7px 12px;color:var(--danger);font-size:12px;font-weight:700;">OK</button>' +
+            '</div>'
+          : '') +
+        '</div>';
+      if (!dudosa && !yaCorregida) {
+        const chk = div.querySelector('input[type=checkbox]');
         chk.onchange = function(){ toggleLinea(numeroDocumento, l.idx, chk.checked); };
+      } else if (yaCorregida) {
+        const chk = div.querySelector('input[type=checkbox]');
+        if (chk) chk.onchange = function(){ toggleLinea(numeroDocumento, l.idx, chk.checked); };
       }
       cont.appendChild(div);
     });
+  }
+
+  function confirmarCorreccionManual(numeroDocumento, idx){
+    const cantInput = document.getElementById('cant-manual-' + idx);
+    const unidadInput = document.getElementById('unidad-manual-' + idx);
+    const num = parseInt(cantInput.value);
+    if (isNaN(num) || num < 0) { alert('Ingresá una cantidad válida.'); return; }
+    checklistActual[idx].cantidadEsperada = num;
+    checklistActual[idx].unidad = unidadInput.value;
+    checklistActual[idx].corregidaManual = true;
+    checklistActual[idx].confiable = true; // ya no bloquea, pero queda marcada como corregida a mano
+    renderChecklist(numeroDocumento);
   }
 
   function toggleLinea(numeroDocumento, idx, marcada){
@@ -388,12 +416,6 @@
     checklistActual.forEach(function(l){ if (l.marcada) guardado[l.idx] = true; });
     localStorage.setItem(claveLocal, JSON.stringify(guardado));
     renderChecklist(numeroDocumento);
-  }
-
-  function irAlCarrito(){
-    // Deriva la URL base del WMS quitando "/exec" para armar la de la
-    // página de carrito ("?page=carrito").
-    window.location.href = URL_WMS + '?page=carrito';
   }
 
   function cancelarYVolver(){
