@@ -519,33 +519,41 @@
   (function(){
     const params = new URLSearchParams(window.location.search);
     const docParam = params.get('documento');
+    const verChecklistParam = params.get('verChecklist');
     if(docParam){
       const u = localStorage.getItem('scanner_usuario');
       const e = parseInt(localStorage.getItem('scanner_expira') || '0');
       if (u && Date.now() < e) {
         usuarioActual = u;
-        if (!pedidoActivo || pedidoActivo.factura !== docParam || !pedidoActivo.mes) {
-          fetch(URL_WMS + '?action=listaPedidosPendientes')
-            .then(r => r.json())
-            .then(lista => {
-              const encontrado = (lista || []).find(function(p){ return p.factura === docParam; });
-              if (encontrado) {
-                pedidoActivo = { mes: encontrado.mes, fila: encontrado.fila, factura: encontrado.factura, cliente: encontrado.cliente, observaciones: encontrado.observaciones || "" };
-              } else {
+
+        if (verChecklistParam === '1') {
+          // Pidieron explícitamente ver el checklist completo.
+          if (!pedidoActivo || pedidoActivo.factura !== docParam || !pedidoActivo.mes) {
+            fetch(URL_WMS + '?action=listaPedidosPendientes')
+              .then(r => r.json())
+              .then(lista => {
+                const encontrado = (lista || []).find(function(p){ return p.factura === docParam; });
+                if (encontrado) {
+                  pedidoActivo = { mes: encontrado.mes, fila: encontrado.fila, factura: encontrado.factura, cliente: encontrado.cliente, observaciones: encontrado.observaciones || "" };
+                } else {
+                  pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
+                }
+                abrirChecklist(docParam);
+              })
+              .catch(() => {
                 pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
-              }
-              abrirChecklist(docParam);
-            })
-            .catch(() => {
-              pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
-              abrirChecklist(docParam);
-            });
+                abrirChecklist(docParam);
+              });
+          } else {
+            abrirChecklist(docParam);
+          }
         } else {
-          abrirChecklist(docParam);
+          // Camino por defecto ahora: directo a la cámara, sin pasar
+          // por el checklist — mucho más rápido entre escaneos.
+          pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
+          irACamara();
         }
       } else {
-        // Si por algún motivo la sesión de PIN venció, igual dejamos
-        // seguir directo a la cámara (mismo comportamiento de siempre).
         pedidoActivo = pedidoActivo || { mes: null, fila: null, factura: docParam, cliente: '' };
         irACamara();
       }
